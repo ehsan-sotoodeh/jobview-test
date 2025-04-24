@@ -31,3 +31,28 @@ def build_request_url(xml_message):
         "message": xml_message,
     }
     return f"{BASE_URL}?{urlencode(params)}"
+
+
+
+def ask_choice(prompt: str, options: list[str]) -> str:
+    """
+    Prompt the user to select from a list of predefined options.
+
+    Args:
+        prompt (str): The question to show before the list.
+        options (list): A list of valid options to choose from.
+
+    Returns:
+        str: The option selected by the user.
+    """
+    print(f"\n{prompt}")
+    for idx, option in enumerate(options, 1):
+        print(f"{idx}. {option}")
+
+    while True:
+        choice = input("Enter the number of your choice: ").strip()
+        if choice.isdigit():
+            index = int(choice) - 1
+            if 0 <= index < len(options):
+                return index
+        print("❌ Invalid input. Please choose a valid number from the list.")

@@ -1,7 +1,40 @@
 import requests
+from parser import parse_response
 from utils import build_request_url
 
 HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
+
+
+def send_jonview_request(xml_data: str) -> str:
+    """
+    Sends an HTTP GET request to the Jonview API with the given XML message.
+
+    Args:
+        xml_data (str): The full XML payload to embed in the URL.
+
+    Returns:
+        str: The response text from the API.
+
+    Raises:
+        requests.exceptions.HTTPError: If the request fails or returns an error code.
+    """
+    try:
+        url = build_request_url(xml_data)
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        if response.status_code != 200:
+            raise requests.exceptions.HTTPError(
+                f"Request failed with status code {response.status_code}"
+            )
+        if response.status_code == 200:
+            result = parse_response(response.text)
+            if result.get("status") == "F":
+                raise requests.exceptions.HTTPError(
+                    f"Request failed with message: {result.get('errmsg')}"
+                )
+        return response.text
+    except requests.exceptions.RequestException as e:
+        raise requests.exceptions.HTTPError(f"An error occurred: {e}")
 
 
 def send_add_reservation_request(
@@ -21,32 +54,8 @@ def send_add_reservation_request(
     bookrecords: list = [],
 ) -> str:
     """
-    Sends an Add Reservation (AR) request to the Jonview API with dynamic values.
-
-    This function builds the required XML payload including segments for agent,
-    options, reservation info, passenger list, and booking details.
-    The request is sent as a GET request with all parameters included in the URL.
-
-    Args:
-        agentseg (str): Agent ID.
-        commitlevelseg (str): Commit level.
-        sessionid (str): Session identifier (optional).
-        referencecheck (str): Reference check flag.
-        productnamedisplay (str): Whether to display product name.
-        cancellationpolicydisplay (str): Whether to display cancellation policy.
-        advisorynotedisplay (str): Whether to show advisory notes.
-        durationdescrdisplay (str): Whether to show duration description.
-        vaofferdisplay (str): Whether to show value-added offers.
-        refitem (str): Reference item.
-        attitem (str): Attachment item.
-        resitem (str): Reservation item (optional).
-        paxrecords (list): List of dicts representing each passenger.
-        bookrecords (list): List of dicts representing each booking.
-
-    Returns:
-        str: The raw XML response as a string.
+    Sends an Add Reservation (AR) request to the Jonview API.
     """
-
     paxseg = ""
     for pax in paxrecords:
         paxseg += f"""
@@ -87,7 +96,7 @@ def send_add_reservation_request(
         <vaofferdisplay>{vaofferdisplay}</vaofferdisplay>
     </optionseg>
     <resinfoseg>
-        <refitem>{refitem}</refitem>     
+        <refitem>{refitem}</refitem>
         <attitem>{attitem}</attitem>
         <resitem>{resitem}</resitem>
     </resinfoseg>
@@ -97,10 +106,7 @@ def send_add_reservation_request(
     </bookseg>
 </message>"""
 
-    url = build_request_url(xml_data)
-    response = requests.get(url, headers=HEADERS)
-    response.raise_for_status()
-    return response.text
+    return send_jonview_request(xml_data)
 
 
 def send_search_request(
@@ -114,43 +120,56 @@ def send_search_request(
     status: str = "OK",
     source: str = "ALL",
 ) -> str:
-    """Sends a search request to the API with the specified parameters and returns the response.
-
-    Args:
-        createdatefrom (str): The starting creation date for the search filter (in YYYY-MM-DD format).
-        createdateto (str): The ending creation date for the search filter (in YYYY-MM-DD format).
-        startdatefrom (str, optional): The starting date for the search filter (in YYYY-MM-DD format). Defaults to an empty string.
-        startdateto (str, optional): The ending date for the search filter (in YYYY-MM-DD format). Defaults to an empty string.
-        reference (str, optional): A reference string to filter the search. Defaults to an empty string.
-        firstname (str, optional): The first name to filter the search. Defaults to an empty string.
-        lastname (str, optional): The last name to filter the search. Defaults to an empty string.
-        status (str, optional): The status to filter the search. Defaults to "OK".
-        source (str, optional): The source to filter the search. Defaults to "ALL".
-
-    Returns:
-        str: The response text from the API.
-
-
-    Raises:
-        requests.exceptions.HTTPError: If the HTTP request fails or returns an error status code.
     """
-
+    Sends a search request (RS) to the Jonview API.
+    """
     xml_data = f"""<message>
-        <actionseg>RS</actionseg>
-        <searchseg>
-            <startdatefrom>{startdatefrom}</startdatefrom>
-            <startdateto>{startdateto}</startdateto> 
-            <createdatefrom>{createdatefrom}</createdatefrom>
-            <createdateto>{createdateto}</createdateto>
-            <reference>{reference}</reference>
-            <firstname>{firstname}</firstname>
-            <lastname>{lastname}</lastname>
-            <status>{status}</status>
-            <source>{source}</source>
-        </searchseg>
-        </message>"""
+    <actionseg>RS</actionseg>
+    <searchseg>
+        <startdatefrom>{startdatefrom}</startdatefrom>
+        <startdateto>{startdateto}</startdateto> 
+        <createdatefrom>{createdatefrom}</createdatefrom>
+        <createdateto>{createdateto}</createdateto>
+        <reference>{reference}</reference>
+        <firstname>{firstname}</firstname>
+        <lastname>{lastname}</lastname>
+        <status>{status}</status>
+        <source>{source}</source>
+    </searchseg>
+</message>"""
 
-    url = build_request_url(xml_data)
-    response = requests.get(url, headers=HEADERS)
-    response.raise_for_status()
-    return response.text
+    return send_jonview_request(xml_data)
+
+
+def send_add_passenger_request(
+    resitem: str,
+    paxnum: int,
+    titlecode: str,
+    fname: str,
+    lname: str,
+    age: str = "",
+    language: str = "EN",
+    paxseq: str = "",
+) -> str:
+    """
+    Sends an Add Passenger (AP) request to the Jonview API.
+    """
+    xml_data = f"""<message>
+    <actionseg>AP</actionseg>
+    <resinfoseg>
+        <resitem>{resitem}</resitem>
+    </resinfoseg>
+    <paxseg>
+        <paxrecord>
+            <paxnum>{paxnum}</paxnum>
+            <paxseq>{paxseq}</paxseq>
+            <titlecode>{titlecode}</titlecode>
+            <fname>{fname}</fname>
+            <lname>{lname}</lname>
+            <age>{age}</age>
+            <language>{language}</language>
+        </paxrecord>
+    </paxseg>
+</message>"""
+
+    return send_jonview_request(xml_data)
