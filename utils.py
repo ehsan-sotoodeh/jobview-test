@@ -1,5 +1,17 @@
 from urllib.parse import urlencode
-from config import BASE_URL, ACTION_CODE, CLIENT_LOC_SEQ, USER_ID, PASSWORD
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Base configuration pulled from environment
+BASE_URL = os.getenv("BASE_URL")
+ACTION_CODE = os.getenv("ACTION_CODE")
+CLIENT_LOC_SEQ = os.getenv("CLIENT_LOC_SEQ")
+USER_ID = os.getenv("USER_ID")
+PASSWORD = os.getenv("PASSWORD")
+
 
 # Constructs the full URL with query parameters for the API request.
 
